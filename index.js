@@ -14,6 +14,7 @@ app.options(/.*/, cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 async function findUser(username) {
     const result = await pool.query(
         "SELECT * FROM users WHERE username = $1",
@@ -34,10 +35,18 @@ app.get("/login/v1", (req, res) => {
 
 // Login
 app.post("/login/v1", async (req, res) => {
-    const username = req.body.username;
-    const password = req.body.password;
+    console.log("LOGIN BODY:", req.body);
+
+    const { username, password } = req.body || {};
 
     try {
+        if (!username || !password) {
+            return res.json({
+                success: false,
+                message: "Username and password are required"
+            });
+        }
+
         const user = await findUser(username);
 
         if (!user || user.password !== password) {
@@ -88,8 +97,7 @@ app.get("/dbtest", async (req, res) => {
 
 // Signup
 app.post("/signup/v1", async (req, res) => {
-    const username = req.body.username;
-    const password = req.body.password;
+    const { username, password } = req.body || {};
 
     console.log("Signup request:", req.body);
 
@@ -101,7 +109,6 @@ app.post("/signup/v1", async (req, res) => {
             });
         }
 
-        // Check if username already exists
         const existingUser = await pool.query(
             "SELECT * FROM users WHERE username = $1",
             [username]
@@ -114,7 +121,6 @@ app.post("/signup/v1", async (req, res) => {
             });
         }
 
-        // Create user
         const result = await pool.query(
             "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username",
             [username, password]
@@ -138,6 +144,7 @@ app.post("/signup/v1", async (req, res) => {
         });
     }
 });
+
 
 // Captcha
 app.post("/captcha/validate/signup", (req, res) => {
@@ -181,7 +188,7 @@ app.get("/routes", (req, res) => {
             "POST /captcha/validate/login",
             "POST /captcha/validate/signup",
             "GET /UserCheck/checkifinvalidusernameforsignup"
-]
+        ]
     });
 });
 
@@ -195,6 +202,7 @@ app.get("/", (req, res) => {
         time: new Date()
     });
 });
+
 
 // Device initialize
 app.post("/device/initialize", (req, res) => {
